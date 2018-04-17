@@ -16,7 +16,6 @@ const groupSchema = mongoose.Schema({
 //User Schmea
 const userSchema = mongoose.Schema({
     name: String,
-    socket_id:String,
     groups: [groupSchema],
     messages: [messageSchema]
 });
@@ -29,6 +28,10 @@ module.exports.getUser = (username, callback) => {
     User.findOne({ name: username }, callback);
 }
 
+// Get All Users
+module.exports.getAllUsers = (callback) => {
+    User.find({}).select('name -_id').then(callback);
+}
 
 //Create User
 module.exports.createUser = (data, callback) => {
@@ -36,18 +39,22 @@ module.exports.createUser = (data, callback) => {
 }
 
 // Get Groups
-module.exports.getGroup = (name, callback) => {
-    User.findOne({ 'groups.groupName': name }, callback);
+module.exports.getGroup = (username, groupname, callback) => {
+    User.findOne({name:username}, 'groups', callback);
 }
 
+// Get User by Group
+module.exports.getUserlistByGroup = (name, callback) => {
+    User.find({'groups.groupName': name}).select('name -_id').then(callback);
+}
 
 //Create Group
-module.exports.createGroup = (username, name, callback) => {
-    User.update({ name: username },
+module.exports.createGroup = (username, g_name, callback) => {
+    User.update({name:username},
         {
             $push: {
                 groups: {
-                    groupName: name
+                    groupName: g_name
                 }
             }
         },
@@ -69,8 +76,9 @@ module.exports.createMessage = (data, callback) => {
     else if (data.type === 1) {//Group Emit
         var groupName = data.to;
 
-        User.getGroup(groupName, function (err, group) {
-            if (group === null) {//Create Group
+        User.getGroup(data.from, groupName, function (err, group) {
+
+            if (group.groups.length === 0 || checkArray(group.groups, groupName)) {//Create Group
                 console.log("Group not found: " + groupName);
                 console.log("Creating new group: " + groupName + " ...");
                 User.createGroup(data.from, groupName, function (err) {
@@ -97,11 +105,11 @@ module.exports.createMessage = (data, callback) => {
         var to = data.to;
         var from = data.from;
         var body = data.body;
-        console.log("This message to " + to);
         console.log("Trying to sending message from " + from + " to " + to);
         User.getUser(to, function(err, user) {
             if (err) {
                 console.log("User not found: " + to);
+                return;
             } else {
                 User.update({name:data.to},
                     
@@ -113,19 +121,39 @@ module.exports.createMessage = (data, callback) => {
                 },
               
                 callback);
-
-                User.update({name:data.from},
-                    
-                    
-                    {
-                        $push: {
-                            messages: data
-                        }
-                    },
-                  
-                    callback);
             }
+        });
+
+        User.getUser(from, function(err, user) {
+            if (err) {
+                console.log("User not found: " + from);
+            }
+            User.update({name:data.from},
+                    
+                    
+                {
+                    $push: {
+                        messages: data
+                    }
+                },
+                
+                function(error, response) {
+                    if (error) {
+                        console.log("Message couldn't write to " + from + " db.");
+                    } else {
+                        console.log("Message has been written to " + from + "database.");
+                    }
+                });
         });
     }
 
+}
+
+function checkArray(array, text){
+    for (var i = 0; i < array.length; i++) {
+        if(array[i].groupName === text){
+            return false;
+        }
+    }
+    return true;
 }

@@ -12,12 +12,14 @@
 	<script src="/socket.io/socket.io.js"></script>
 
 	<style>
-		body {
-			margin-top: 30px;
-		}
-
 		#messageArea {
 			display: none;
+			padding: 5px;
+		}
+
+		#userInfo {
+			display: none;
+			padding-top: 5px;
 		}
 	</style>
 
@@ -38,16 +40,18 @@
 			</div>
 		</div>
 
-		<div id="messageArea" class="row">
+		<div id="userInfo" class="row">
 			<div class="col-md-4">
 				<div class="well">
-					<h3>Online Users</h3>
-					<ul class="list-group" id="users"></ul>
+					<h3>Username</h3>
+					<span id="myusername"></span>
 				</div>
 			</div>
+		</div>
+
+		<div id="messageArea" class="row">
 			<div class="col-md-8">
 				<div class="chat" id="chat"></div>
-
 				<form id="messageForm">
 					<div class="form-group">
 						<label>Enter Message</label>
@@ -56,6 +60,12 @@
 						<input type="submit" class="btn btn-primary" value="Send Message" />
 					</div>
 				</form>
+			</div>
+			<div class="col-md-4">
+				<div class="well">
+					<h3>Users in Database</h3>
+					<ul class="list-group" id="users"></ul>
+				</div>
 			</div>
 		</div>
 	</div>
@@ -71,6 +81,8 @@
 			var $userForm = $('#userForm');
 			var $users = $('#users');
 			var $username = $('#username');
+			var $userInfo = $('#userInfo');
+			var $myusername = $('#myusername');
 			var username;
 
 
@@ -78,11 +90,19 @@
 				e.preventDefault();
 
 				var filteredMessage = filterMessage($message.val());
-					filteredMessage.socketid = socket.id;
-					alert(socket.id);
+				filteredMessage.socketid = socket.id;
 				filteredMessage.socketid = socket.id;
 
 				socket.emit('send message', filteredMessage, function (response) {
+
+					if (response.type === 0) { //GLOBAL
+						response.from = "[GLOBAL] " + response.from;
+					} else if (response.type === 1) { //GROUP
+						response.from = "[GROUP: "+ response.to + "] " + response.from;
+					} else if (response.type === 2) { //PRIVATE MESSAGE
+						response.from = "[PM: "+ response.to + "] " + response.from;
+					}
+
 					$chat.append('<div class="well"><strong>' + response.from + ': </strong>' + response.body + '</div>');
 				});
 				$message.val('');
@@ -91,6 +111,15 @@
 
 			socket.on('new message', function (data) {
 				console.log("Received data: " + data);
+
+				if (data.type === 0) { //GLOBAL
+					data.from = "[GLOBAL] " + data.from;
+				} else if (data.type === 1) { //GROUP
+					data.from = "[GROUP: "+ data.to + "] " + data.from;
+				} else if (data.type === 2) { //PRIVATE MESSAGE
+					data.from = "[PM: "+ data.to + "] " + data.from;
+				}
+
 				$chat.append('<div class="well"><strong>' + data.from + ': </strong>' + data.body + '</div>');
 			});
 
@@ -101,21 +130,28 @@
 				} else {
 					username = $username.val();
 					socket.emit('new user', $username.val(), function (data) {
-
+						//alert(socket.id);
 						if (data) {
 							$userFormArea.hide();
+							$userInfo.show();
 							initMessages(data);
 							$messageArea.show();
+
+							$myusername.html(username);
 						}
 					});
 				}
 				$username.val('');
 			});
 
-			socket.on('get users', function (data) {
+			socket.on('group-message', function(data) {
+				console.log("Gruptan mesj geldi: " + data);
+			}) ;
+
+			socket.on('allUsersInDB', function (data) {
 				var html = '';
 				for (i = 0; i < data.length; i++) {
-					html += '<li class="list-group-item">' + data[i] + '</li>';
+					html += '<li class="list-group-item">' + data[i].name + '</li>';
 				}
 				$users.html(html);
 			});
@@ -127,7 +163,7 @@
 					$chat.append('<div class="well"><strong>' + from + ': </strong>' + body + '</div>');
 				}
 			}
-			
+
 			function filterMessage(body) {
 				var message = { //To global as default
 					body: body,
@@ -137,25 +173,20 @@
 				}
 
 				if (body[0] === '#') { //To group
-					var groupName = body.substr(1, body.indexOf(" "));
-					var messageBody = body.substr(body.indexOf(" ") + 1);
+					var groupName = body.substr(1, body.indexOf(" ") - 1);
+					var messageBody = body.substr(body.indexOf(" "));
 					message.to = groupName;
 					message.body = messageBody;
 					message.type = 1;
 				} else if (body[0] === '@') { //To private 
-					var groupName = body.substr(1, body.indexOf(" ")-1);
+					var personName = body.substr(1, body.indexOf(" ") - 1);
 					var messageBody = body.substr(body.indexOf(" ") + 1);
-					message.to = groupName;
+					message.to = personName;
 					message.body = messageBody;
 					message.type = 2;
 				}
-
-
-
 				return message;
 			}
-
-
 		});
 	</script>
 </body>
