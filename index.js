@@ -10,7 +10,7 @@ var onlineUsers = [];
 
 /* var connections = [];
  */
-server.listen(process.env.PORT || 3001);
+server.listen(process.env.PORT || 3000);
 console.log('Server started at PORT: *3000');
 
 mongoose.connect('mongodb://localhost/chatapp');

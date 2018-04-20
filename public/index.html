@@ -7,12 +7,22 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+	<link rel="stylesheet" href="/public/css/style.css">
 	<script src="https://code.jquery.com/jquery-latest.min.js"></script>
 	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
 	<script src="/socket.io/socket.io.js"></script>
 
 	<style>
+		body {
+			font: 13px Helvetica, Arial;
+			margin:10px;
+		}
+
 		#messageArea {
+			display: none;
+			padding: 5px;
+		}
+		#userDb {
 			display: none;
 			padding: 5px;
 		}
@@ -21,12 +31,56 @@
 			display: none;
 			padding-top: 5px;
 		}
+
+		#messageForm {
+			background: lightgray;
+			padding-left: 100px;
+			padding-top: 10px;
+			position: fixed;
+			bottom: 0;
+			width: 100%;
+		}
+
+		#messageForm input {
+			position: relative;
+			background: #FFFFFF;
+			color: black;
+			border: 0;
+			padding: 10px;
+			width: 50%;
+			margin-right: .5%;
+		}
+
+		#messageForm .messageButton {
+			color: #FFFFFF;
+			background-color: lightseagreen;
+			width: 9%;
+			border: none;
+			padding: 10px;
+			width: 100px;
+		}
+
+		#messages {
+			list-style-type: none;
+			margin: 0;
+			padding: 0;
+		}
+
+		#messages li {
+			padding: 5px 10px;
+		}
+
+		#messages li:nth-child(odd) {
+			background: #eee;
+		}
 	</style>
 
 </head>
 
 <body>
+	
 	<div class="container">
+		
 		<div id="userFormArea" class="row">
 			<div class="col-md-12">
 				<form id="userForm">
@@ -34,38 +88,45 @@
 						<label>Enter Username</label>
 						<input class="form-control" id="username" autofocus/>
 						<br/>
-						<input type="submit" class="btn btn-primary" value="Login" />
+						<input type="submit" class="btn btn-primary" value="Oturum Aç" />
 					</div>
 				</form>
 			</div>
 		</div>
 
-		<div id="userInfo" class="row">
-			<div class="col-md-4">
-				<div class="well">
-					<h3>Username</h3>
-					<span id="myusername"></span>
-				</div>
-			</div>
-		</div>
+		<div class="row">
 
-		<div id="messageArea" class="row">
-			<div class="col-md-8">
-				<div class="chat" id="chat"></div>
-				<form id="messageForm">
-					<div class="form-group">
-						<label>Enter Message</label>
-						<textarea class="form-control" id="message" autofocus></textarea>
-						<br/>
-						<input type="submit" class="btn btn-primary" value="Send Message" />
-					</div>
-				</form>
-			</div>
 			<div class="col-md-4">
-				<div class="well">
-					<h3>Users in Database</h3>
-					<ul class="list-group" id="users"></ul>
+				<div class="row" id="userInfo">
+					<div class="col-md-12">
+						<div class="well">
+							<h3>Username</h3>
+							<span id="myusername"></span>
+						</div>
+					</div>
 				</div>
+
+				<div class="row" id="userDb">
+					<div class="col-md-12">
+						<div class="well">
+							<h3>Users in Database</h3>
+							<ul class="list-group" id="users"></ul>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div class="col-md-8" id="messageArea">
+					<div class="chat" id="chat">
+							<ul id="messages"></ul>
+						</div>
+						<form id="messageForm">
+							<div class="form-group">
+								<label>Enter Message</label>
+								<input type="text" class="form-control" id="message" autofocus>
+								<br/>
+								<input  type="submit" class="btn btn-primary messageButton" value="Gönder"/>
+							</div>
+						</form>
 			</div>
 		</div>
 	</div>
@@ -75,8 +136,9 @@
 			var socket = io.connect();
 			var $messageForm = $('#messageForm');
 			var $message = $('#message');
-			var $chat = $('#chat');
+			var $chat = $('#messages');
 			var $messageArea = $('#messageArea');
+			var $userDb = $('#userDb');
 			var $userFormArea = $('#userFormArea');
 			var $userForm = $('#userForm');
 			var $users = $('#users');
@@ -98,12 +160,12 @@
 					if (response.type === 0) { //GLOBAL
 						response.from = "[GLOBAL] " + response.from;
 					} else if (response.type === 1) { //GROUP
-						response.from = "[GROUP: "+ response.to + "] " + response.from;
+						response.from = "[GROUP: " + response.to + "] " + response.from;
 					} else if (response.type === 2) { //PRIVATE MESSAGE
-						response.from = "[PM: "+ response.to + "] " + response.from;
+						response.from = "[PM: " + response.to + "] " + response.from;
 					}
 
-					$chat.append('<div class="well"><strong>' + response.from + ': </strong>' + response.body + '</div>');
+					$chat.append('<li> <strong>' + response.from + ': </strong>' + response.body);
 				});
 				$message.val('');
 				$message.focus();
@@ -115,12 +177,12 @@
 				if (data.type === 0) { //GLOBAL
 					data.from = "[GLOBAL] " + data.from;
 				} else if (data.type === 1) { //GROUP
-					data.from = "[GROUP: "+ data.to + "] " + data.from;
+					data.from = "[GROUP: " + data.to + "] " + data.from;
 				} else if (data.type === 2) { //PRIVATE MESSAGE
-					data.from = "[PM: "+ data.to + "] " + data.from;
+					data.from = "[PM: " + data.to + "] " + data.from;
 				}
 
-				$chat.append('<div class="well"><strong>' + data.from + ': </strong>' + data.body + '</div>');
+				$chat.append('<li><strong>' + data.from + ': </strong>' + data.body + '</li>');
 			});
 
 			$userForm.submit(function (e) {
@@ -136,6 +198,7 @@
 							$userInfo.show();
 							initMessages(data);
 							$messageArea.show();
+							$userDb.show();
 
 							$myusername.html(username);
 						}
@@ -144,9 +207,9 @@
 				$username.val('');
 			});
 
-			socket.on('group-message', function(data) {
+			socket.on('group-message', function (data) {
 				console.log("Gruptan mesj geldi: " + data);
-			}) ;
+			});
 
 			socket.on('allUsersInDB', function (data) {
 				var html = '';
@@ -157,10 +220,19 @@
 			});
 
 			function initMessages(data) {
+
 				for (let i = 0; i < data.messages.length; i++) {
-					const body = data.messages[i].body;
-					const from = data.messages[i].from;
-					$chat.append('<div class="well"><strong>' + from + ': </strong>' + body + '</div>');
+					var body = data.messages[i].body;
+					var from = data.messages[i].from;
+
+					if (data.messages[i].type === 0) { //GLOBAL
+						from = "[GLOBAL] " + from;
+					} else if (data.type === 1) { //GROUP
+						from = "[GROUP: " + data.to + "] " + from;
+					} else if (data.type === 2) { //PRIVATE MESSAGE
+						from = "[PM: " + data.to + "] " + from;
+					}
+					$chat.append('<li><strong>' + from + ': </strong>' + body + '</li>');
 				}
 			}
 
